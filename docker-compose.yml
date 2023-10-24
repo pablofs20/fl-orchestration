@@ -1,0 +1,48 @@
+version: "3"
+services:
+  kafka:
+    image: wurstmeister/kafka:2.12-2.3.1
+    restart: on-failure:3
+    links:
+    - zookeeper
+    ports:
+    - 29092:29092
+    container_name: kafka
+    env_file:
+      - kafka.env
+    networks:
+        private:
+          ipv4_address: 10.5.0.100
+  zookeeper:
+    image: wurstmeister/zookeeper
+    ports:
+    - 2181:2181
+    container_name: zookeeper
+    networks:
+      private:
+  fl_agent:
+    build:
+      context: fl-agent-docker
+    image: fl_agent
+    container_name: fl_agent     
+    depends_on:
+      - 'kafka'
+      - 'aggregator'
+    ports:
+      - 3333:3333
+    networks:
+      private:
+  aggregator:
+    build:
+      context: fl-aggregator-docker
+    image: fl_aggregator
+    container_name: fl_aggregator
+    networks:
+      private:
+networks:
+  private: # between containers
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.0.0/24
+         gateway: 10.5.0.1
