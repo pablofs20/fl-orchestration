@@ -10,8 +10,10 @@ response = requests.get(url)
 if response.status_code == 200:
     model_data = response.json()
     # Aquí puedes cargar el modelo desde 'model_data' y utilizarlo en tu aplicación cliente.
+    print(response)
 else:
     print("Error al obtener el modelo.")
+    print(response)
 
 print(model_data)
 

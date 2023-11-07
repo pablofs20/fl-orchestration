@@ -1,0 +1,33 @@
+Parámetros FL Aggregator
+
+- Rondas
+- Número mínimo de clientes para comenzar ronda
+- Puerto a exponer para recibir conexiones (registro de agentes)
+- Puerto a exponer para la API REST (obtención variables entrenamiento)
+
+Parámetros FL Agent (y FL Client)
+
+- Número de muestras de entrenamiento (benign flows) necesarias para registrarse contra el FL Aggregator
+- IP, puerto y nombre del topic del broker Kafka de donde va a recibir dichas muestras de entrenamiento
+- IP del FL Aggregator
+- Puerto de la API REST del FL Aggregator de donde va a recibir las variables de entrenamiento obligatorias
+- Puerto del FL Aggregator donde se reciben las conexiones de registro de los agentes
+- Puerto a exponer para recibir peticiones del modelo de detección (sólo disponible tras un primer entrenamiento, al menos)
+- Épocas a ejecutar durante el entrenamiento local (generación del model update)
+- Tamaño del batch (batch size) a usar durante el entrenamiento local (generación del model update)
+- Pasos por época (iteraciones de batch) a usar durante el entrenamiento local (generación del model update)
+- Tamaño del conjunto de datos para test durante el entrenamiento local (porcentaje sobre 1 respecto al total de datos)
+
+Parámetros Real-time Anomaly Detection Engine
+
+- IP del FL Agent
+- IP del FL Aggregator
+- Puerto de la API REST del FL Agent del que tiene que recuperar el modelo de detección a ser utilizado
+- Puerto de la API REST del FL Agent del que tiene que recuperar el threshold (MSE) de detección a ser utilizado
+- Puerto de la API REST del FL Aggregator del que tiene que recuperar el conjunto de variables obligatorias
+- IP y puerto del broker Kafka
+- Nombre del topic del broker Kafka de donde va a recibir las muestras para detección (unknown flows)
+- Nombre del topic del broker Kafka donde tiene que publicar las alertas de anomalías
+
+
+

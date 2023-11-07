@@ -94,7 +94,7 @@ if __name__ == '__main__':
                 serialized_model = current_model.to_json()
                 return jsonify({"model": serialized_model})
             else:
-                return jsonify({"error": "Model not available yet"})
+                return jsonify({"error": "Model not available yet"}), 404
 
     api_port = int(get_config("FL Agent", "APIPort"))
 

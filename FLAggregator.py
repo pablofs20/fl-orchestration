@@ -44,7 +44,6 @@ def main():
     
     rounds = int(get_config("Rounds"))
     min_clients = int(get_config("MinClients"))
-    ip = get_config("IP")
     port = get_config("Port")
 
     strategy = fl.server.strategy.FedAvg(
@@ -55,8 +54,8 @@ def main():
     )
 
     while True:
-        fl.server.start_server(server_address = '{ip}:{port}' \
-            .format(ip = ip, port = port),
+        fl.server.start_server(server_address = 'localhost:{port}' \
+            .format(port = port),
             config=fl.server.ServerConfig(num_rounds=rounds),
             strategy=strategy
         )
