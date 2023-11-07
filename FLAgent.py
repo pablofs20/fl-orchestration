@@ -2,29 +2,22 @@ import configparser
 import json
 import requests
 import pandas as pd
+import threading
 from datetime import datetime
 from copy import copy
 from kafka import KafkaConsumer
+from flask import Flask, jsonify, send_file
 from FLClient import FLClient
 from preprocessor import preprocess_data_client_side
 
 CONFIG_FILE = "resources/fl_agent.ini"
 
-def get_config():
+
+def get_config(section, parameter):
     config = configparser.ConfigParser()
     config.read(CONFIG_FILE)
 
-    agent_config = config["FL Agent"]
-    aggregator_config = config["FL Aggregator"]
-
-    return (
-        int(agent_config["TrainingThreshold"]),
-        str(agent_config["KafkaBrokerIP"]),
-        int(agent_config["KafkaBrokerPort"]),
-        str(agent_config["KafkaConsumerTopic"]),
-        str(aggregator_config["IP"]),
-        str(aggregator_config["APIPort"]),
-    )
+    return config[section][parameter]
 
 def create_kafka_consumer(topic, broker_ip, broker_port):
     consumer = KafkaConsumer(topic, group_id=None,
@@ -58,21 +51,51 @@ def federated_training(flow_list, aggregator_ip, aggregator_api_port):
     return fl_client.get_final_model()
 
 def main():
-    training_threshold, broker_ip, broker_port, consumer_topic, aggregator_ip, aggregator_api_port = \
-        get_config()
+    global current_model
+
+    training_threshold = int(get_config("FL Agent", "TrainingThreshold"))
+    broker_ip = get_config("FL Agent", "KafkaBrokerIP")
+    broker_port = int(get_config("FL Agent", "KafkaBrokerPort"))
+    consumer_topic = get_config("FL Agent", "KafkaConsumerTopic")
+    aggregator_ip = get_config("FL Aggregator", "IP")
+    aggregator_api_port = int(get_config("FL Aggregator", "APIPort"))
 
     consumer = create_kafka_consumer(consumer_topic, broker_ip, broker_port)
 
     normal_flows = []
-    current_model = None 
 
     for flow_info in consumer:
         store_flow(flow_info, normal_flows)
             
         if len(normal_flows) > training_threshold:
-            current_model = federated_training(normal_flows, aggregator_ip, aggregator_api_port)
+            final_model = federated_training(normal_flows, aggregator_ip, aggregator_api_port)
+
+            with lock:
+                current_model = final_model
+
             normal_flows.clear()
             current_model.save('model-{ts}'.format(ts=datetime.now()))
 
 if __name__ == '__main__':
-    main()
+    current_model = None
+    
+    threading.Thread(target=main).start()
+
+    app = Flask(__name__)
+
+    lock = threading.Lock()
+    
+    @app.route("/getModel", methods=["GET"])
+    def get_model():
+        global current_model
+
+        with lock:
+            if current_model is not None:
+                serialized_model = current_model.to_json()
+                return jsonify({"model": serialized_model})
+            else:
+                return jsonify({"error": "Model not available yet"})
+
+    api_port = int(get_config("FL Agent", "APIPort"))
+
+    app.run(host='localhost', port=api_port)

@@ -71,8 +71,11 @@ class StandardClient(fl.client.NumPyClient):
         self.model.set_weights(parameters)
 
         predictions = self.model.predict(self.X_test)
-        mse = mean_squared_error(self.X_test, predictions)#((self.X_test - predictions)**2).mean(axis=1)
+        mse_per_sample = mean_squared_error(self.X_test, predictions).numpy()
+        mse = mse_per_sample.mean()
+        print(mse)
         self.mse_hist.append(mse)
+        print(self.mse_hist)
         return 0.0, len(self.X_test), {}
 
 
@@ -102,7 +105,10 @@ class FLClient:
         predictions = self.model.predict(self.X_train)
         train_mse = mean_squared_error(self.X_train, predictions)
 
+        print(train_mse)
+        print(type(train_mse))
         threshold = np.percentile(train_mse, 95)
+        print(threshold)
 
         return threshold
 

@@ -9,39 +9,38 @@ from flask import Flask, jsonify
 from preprocessor import preprocess_data_server_side
 from model_creator import create_basic_autoencoder
 
-CONF_FILE = 'resources/fl_aggregator.ini'
+CONFIG_FILE = 'resources/fl_aggregator.ini'
 
 def get_config(parameter):
     config = configparser.ConfigParser()
-    config.read(CONF_FILE)
+    config.read(CONFIG_FILE)
 
     return config['FL Aggregator'][parameter]
 
 def main():
     global variable_set
     # Load general dataset
-    general_dataset = pd.read_csv("general_dataset.csv", low_memory=False)
-    general_dataset = general_dataset.drop(columns=["Unnamed: 0", "Label"])
+    BS1_benign = pd.read_csv("../datasets/BTS_1_benign.csv")
+    BS2_benign = pd.read_csv("../datasets/BTS_2_benign.csv")
+
+    general_dataset = pd.concat([BS1_benign, BS2_benign])
 
     # Preprocess it
     general_dataset = preprocess_data_server_side(general_dataset)
 
-    # Get variable set after preprocessing
+    # # Get variable set after preprocessing
     with lock:
         variable_set = list(general_dataset.columns)
         print(variable_set)
 
-    # Create model
+    # # Create model
     model = create_basic_autoencoder(len(general_dataset.columns))
 
-    # Get model weights as a list of NumPy ndarray's
+    # # Get model weights as a list of NumPy ndarray's
     weights = model.get_weights()
 
-    # Serialize ndarrays to `Parameters`
+    # # Serialize ndarrays to `Parameters`
     parameters = fl.common.ndarrays_to_parameters(weights)
-
-    config = configparser.ConfigParser()
-    config.read(CONF_FILE)
     
     rounds = int(get_config("Rounds"))
     min_clients = int(get_config("MinClients"))

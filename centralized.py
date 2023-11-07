@@ -1,62 +1,26 @@
 import pandas as pd
 import numpy as np
-from preprocessor import preprocess_data
-import matplotlib.pyplot as plt
-import tensorflow as tf
-
 from keras.losses import mean_squared_error
-from keras import regularizers
-from keras.models import Model
-from keras.layers import Input, Dropout, Dense
-from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from preprocessor import preprocess_data_centralized
+from model_creator import create_basic_autoencoder
 
+BS1_benign = pd.read_csv("../datasets/BTS_1_benign.csv").sample(n=50000)
+BS2_benign = pd.read_csv("../datasets/BTS_2_benign.csv").sample(n=50000)
 
-def create_basic_autoencoder(X):
-    n_features = X.shape[1]
+df = pd.concat([BS1_benign, BS2_benign])
 
-    encoding_neurons = round(n_features/2)
-    hidden_neurons_1 = round(encoding_neurons/2)
-    hidden_neurons_2 = round(hidden_neurons_1/2)
+X_train, X_test, n_features = preprocess_data_centralized(df, 0.3)
 
-    learning_rate = 1e-7
+autoencoder = create_basic_autoencoder(n_features)
 
-    inputs = Input(shape=(n_features,))
+autoencoder.fit(X_train, X_train, epochs=50)
 
-    # encoder
-    encoder = Dense(encoding_neurons, activation="tanh",
-                    activity_regularizer=regularizers.l2(learning_rate))(inputs)
-    encoder = Dropout(0.2)(encoder)
-    encoder = Dense(hidden_neurons_1, activation='relu')(encoder)
-    encoder = Dense(hidden_neurons_2, activation="relu")(encoder)
+predictions = autoencoder.predict(X_train)
+train_mse = mean_squared_error(X_train, predictions).numpy()
 
-    # decoder
-    decoder = Dense(hidden_neurons_1, activation='relu')(encoder)
-    decoder = Dropout(0.2)(decoder)
-    decoder = Dense(encoding_neurons, activation='relu')(decoder)
-    decoder = Dense(n_features, activation='tanh')(decoder)
+print(train_mse)
+print(type(train_mse))
+threshold = np.percentile(train_mse, 95)
+print(threshold)
 
-    autoencoder = Model(inputs=inputs, outputs=decoder)
-
-    autoencoder.compile(optimizer='adam', loss='mse')
-
-    return autoencoder
-
-
-df = pd.read_csv("BTS_1.csv")
-df = df.drop(columns=["Unnamed: 0"])
-df["Label"] = df['Label'].replace('Benign', 0).replace('Malicious', 1)
-benign_df = df.loc[df["Label"] == 0]
-benign_df = benign_df.sample(n=100000)
-malign_df = df.loc[df["Label"] == 1]
-malign_df.to_csv("malign.csv", index=False)
-malign_df = malign_df.sample(n=100000)
-
-benign_df.drop(columns=["Label"], inplace=True)
-malign_df.drop(columns=["Label"], inplace=True)
-
-X_train, X_test = preprocess_data(benign_df, 0.3)
-
-
-autoencoder = create_basic_autoencoder(X_train)
-
-autoencoder.fit(X_train, X_train, epochs=10)
+autoencoder.save("model_centralized.h5")
