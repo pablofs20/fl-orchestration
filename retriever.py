@@ -15,6 +15,11 @@ else:
     print("Error al obtener el modelo.")
     print(response)
 
+url = 'http://localhost:7777/getThreshold'  # Ajusta la URL según la dirección de tu servidor Flask
+response = requests.get(url)
+
+print(response.json())
+
 print(model_data)
 
 import tensorflow as tf

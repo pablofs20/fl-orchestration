@@ -48,10 +48,11 @@ def federated_training(flow_list, aggregator_ip, aggregator_api_port):
     fl_client = FLClient(training_data)
     fl_client.start()
 
-    return fl_client.get_final_model()
+    return fl_client.get_final_model(), fl_client.get_detection_threshold()
 
 def main():
     global current_model
+    global detection_threshold
 
     training_threshold = int(get_config("FL Agent", "TrainingThreshold"))
     broker_ip = get_config("FL Agent", "KafkaBrokerIP")
@@ -68,16 +69,18 @@ def main():
         store_flow(flow_info, normal_flows)
             
         if len(normal_flows) > training_threshold:
-            final_model = federated_training(normal_flows, aggregator_ip, aggregator_api_port)
+            final_model, threshold = federated_training(normal_flows, aggregator_ip, aggregator_api_port)
 
             with lock:
                 current_model = final_model
+                detection_threshold = threshold
 
             normal_flows.clear()
             current_model.save('model-{ts}'.format(ts=datetime.now()))
 
 if __name__ == '__main__':
     current_model = None
+    detection_threshold = None
     
     threading.Thread(target=main).start()
 
@@ -95,6 +98,16 @@ if __name__ == '__main__':
                 return jsonify({"model": serialized_model})
             else:
                 return jsonify({"error": "Model not available yet"}), 404
+            
+    @app.route("/getThreshold", methods=["GET"])
+    def get_detection_threshold():
+        global detection_threshold
+
+        with lock:
+            if detection_threshold is not None:
+                return jsonify({"threshold": detection_threshold})
+            else:
+                return jsonify({"error": "Detection threshold not available yet"}), 404
 
     api_port = int(get_config("FL Agent", "APIPort"))
 
